@@ -1,0 +1,12 @@
+# Ignore environment files
+*.env
+.gotify.env
+
+# Ignore bash history or logs
+*.log
+
+# Ignore MacOS files
+.DS_Store
+
+# Ignore other temporary files
+*.swp
