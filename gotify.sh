@@ -1,4 +1,38 @@
 #!/usr/bin/env bash
+#
+# Autor: Tiago Giglia Manoel
+# Email: tiagomanoel@tiagomanoel.com.br
+# Descrição: Script para monitoramento de servidor e envio de notificações via Gotify
+# Data: 2026-02-10 
+# Versão: 1.0.0
+# Licença: GPLv3
+#
+#--------------------------------------------------------------
+# Requisitos:
+# - Linux (testado em Debian/Proxmox)
+# - Gotify Server configurado e acessível
+# - Token de acesso do Gotify
+# Funcionalidades:
+# - Coleta de informações do sistema (CPU, memória, disco, VMs, etc.)
+# - Formatação de mensagem em Markdown
+# - Envio de notificações para Gotify
+# Uso:
+# 1. Configure o arquivo gotify.env com as variáveis de ambiente necessárias
+# 2. Execute o script manualmente ou via cron para monitoramento periódico  
+# Exemplo de gotify.env:
+# GOTIFY_URL=http://seu-gotify-server:port
+# GOTIFY_TOKEN=seu_token_aqui
+# GOTIFY_PRIORITY=5
+# Dependências:
+# - lscpu, free, df, zpool, qm, pct, pveversion, jq, curl  
+# Notas:
+# - O script deve ser executado com permissões adequadas para acessar as informações do sistema
+# 
+#--------------------------------------------------------------
+#
+# History 
+# - 2026-02-20: Criação do script principal
+#--------------------------------------------------------------
 
 # Diretório real do script (funciona via cron, symlink, etc.)
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
@@ -107,6 +141,7 @@ echo "- Pacotes pendentes: $UPDATE_COUNT"
 echo "$UPDATE_LIST"
 )
 
+# ================= ENVIA PARA GOTIFY =================
 curl -sS \
   -H "Content-Type: application/json" \
   -d "$(jq -n \
