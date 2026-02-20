@@ -58,6 +58,18 @@ LXC_LIST=$(pct list 2>/dev/null | awk 'NR>1 && $2=="running" {printf "- CT %s (%
 # ================= PROXMOX =================
 PVE_VERSION=$(/usr/bin/pveversion 2>/dev/null)
 
+# ================= ATUALIZAÇÕES =================
+
+UPDATES_RAW=$(apt list --upgradable 2>/dev/null | tail -n +2)
+
+if [ -n "$UPDATES_RAW" ]; then
+    UPDATE_COUNT=$(echo "$UPDATES_RAW" | wc -l)
+    UPDATE_LIST=$(echo "$UPDATES_RAW" | awk -F/ '{print "- " $1}')
+else
+    UPDATE_COUNT=0
+    UPDATE_LIST="Sistema atualizado"
+fi
+
 # ================= MENSAGEM =================
 MESSAGE=$(
 echo "## 🖥 STATUS DO SERVIDOR"
@@ -89,6 +101,10 @@ echo "$LXC_LIST"
 echo ""
 echo "### 🔹 Proxmox"
 echo "$PVE_VERSION"
+echo ""
+echo "### 📦 Atualizações"
+echo "- Pacotes pendentes: $UPDATE_COUNT"
+echo "$UPDATE_LIST"
 )
 
 curl -sS \
