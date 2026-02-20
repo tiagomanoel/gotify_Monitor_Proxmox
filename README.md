@@ -1,60 +1,235 @@
-# gotify-server-status
+Perfeito.
+Segue o **README.md corrigido**, considerando que o script principal se chama `gotify.sh`.
 
-Este repositório contém um script Bash planejado para **ser executado em servidores Proxmox**. Ele coleta informações do host e de seus guests (CPU, memória, disco, ZFS, VMs, LXC, versão do Proxmox, etc.) e envia uma mensagem formatada para o serviço Gotify.
+Você pode substituir o conteúdo atual por este.
 
-## Funcionamento
+---
 
-O script (`gotify.sh`) lê variáveis de configuração de um arquivo `.gotify.env`, compõe uma mensagem em Markdown com o estado do servidor e publica para um servidor Gotify usando a API HTTP.
+# 🖥️ Gotify Monitor Proxmox
 
-## Dependências
+![Proxmox](https://img.shields.io/badge/Proxmox-VE-E57000?logo=proxmox\&logoColor=white)
+![Bash](https://img.shields.io/badge/Bash-Script-121011?logo=gnubash)
+![Systemd](https://img.shields.io/badge/Systemd-Timer-ffcc00?logo=linux)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-O servidor onde o script é executado precisa ter os seguintes programas instalados:
+Script de monitoramento para **Proxmox VE**, com envio automático de status do servidor via **Gotify** em formato Markdown.
 
-- `bash` (como interpretador do script)
-- `curl` (para enviar a requisição HTTP ao Gotify)
-- `jq` (para montar o JSON da mensagem)
-- `lscpu`, `nproc`, `top`, `free`, `df` (ferramentas padrão de análise de sistema)
-- `zpool` (caso utilize ZFS na máquina Proxmox)
-- `qm` e `pct` (para Proxmox VMs e containers, essenciais no ambiente Proxmox)
-- `/usr/bin/pveversion` (proxmox, para coletar a versão do PVE)
+---
 
-> Observação: a maioria dessas ferramentas já vem em distribuições Linux com Pacotes padrão ou Proxmox.
+## 📌 Funcionalidades
 
-## Instalação
+O script coleta e envia:
 
-1. Clone ou copie o script para um diretório de sua preferência:
-   ```bash
-   git clone <seu-repo> gotify-server-status
-   cd gotify-server-status
-   ```
-2. Crie um arquivo de variáveis copiando o exemplo:
-   ```bash
-   cp gotify.env.exemple .gotify.env
-   ```
-3. Edite `.gotify.env` com sua URL do Gotify, token e prioridade:
-   ```ini
-   GOTIFY_URL="https://gotify.seudominio.com/message"
-   GOTIFY_TOKEN="SEU_TOKEN_AQUI"
-   GOTIFY_PRIORITY=5
-   ```
-4. Dê permissão de execução ao script:
-   ```bash
-   chmod +x gotify.sh
-   ```
-5. Teste executando manualmente:
-   ```bash
-   ./gotify.sh
-   ```
-   Caso tudo esteja correto, você receberá uma notificação no cliente Gotify configurado.
+* 🖥️ Modelo, uso e temperatura da CPU
+* 💾 Uso real de memória
+* 💽 Uso total de disco
+* 📊 Uso individual de cada pool ZFS
+* 📦 VMs (QEMU) em execução
+* 📦 Containers LXC em execução
+* 🔄 Pacotes pendentes de atualização
+* 🔧 Versão do Proxmox
 
-## Uso
+---
 
-Agende a execução periódica usando `cron` ou `systemd` para enviar atualizações regulares do status do servidor.
+## 📸 Exemplo de saída no Gotify
 
-```cron
-*/5 * * * * /path/to/gotify.sh
+```markdown
+## 🖥️ STATUS DO SERVIDOR
+
+Host: proxmox-home
+Uptime: up 3 hours
+
+### 🔹 CPU
+- Modelo: Intel Xeon
+- Núcleos: 8
+- Uso atual: 12%
+- Temperatura: 42°C
+
+### 🔹 Memória
+- Total: 32768MB
+- Usada real: 10432MB
+
+### 📊 ZFS
+- rpool → 120G usado de 512G (23%)
+
+### 📦 VMs Rodando
+- VM 100 (OPNsense)
+- VM 101 (Home Assistant)
 ```
 
-## Licença
+---
 
-Sinta-se à vontade para utilizar e adaptar este script conforme necessário. Não há licença específica definida.
+# 📦 Requisitos
+
+* Proxmox VE
+* `curl`
+* `jq`
+* `git`
+* (Opcional) `lm-sensors`
+
+Instalação:
+
+```bash
+apt update
+apt install curl jq git lm-sensors -y
+```
+
+---
+
+# 📁 Estrutura do Projeto
+
+```text
+gotify_Monitor_Proxmox/
+ ├── gotify.sh
+ ├── gotify.env
+ └── README.md
+```
+
+---
+
+# 🔐 Configuração
+
+## 1️⃣ Criar arquivo de credenciais
+
+```bash
+nano gotify.env
+```
+
+Conteúdo:
+
+```bash
+GOTIFY_URL="https://gotify.seudominio.com/message"
+GOTIFY_TOKEN="SEU_TOKEN_AQUI"
+GOTIFY_PRIORITY=5
+```
+
+Proteger:
+
+```bash
+chmod 600 gotify.env
+```
+
+O script detecta automaticamente o `gotify.env` no mesmo diretório.
+
+---
+
+# ▶ Execução Manual
+
+```bash
+chmod +x gotify.sh
+./gotify.sh
+```
+
+---
+
+# ⏰ Execução Automática (Systemd Timer)
+
+## 1️⃣ Criar serviço
+
+```bash
+nano /etc/systemd/system/gotify-monitor.service
+```
+
+Conteúdo:
+
+```ini
+[Unit]
+Description=Monitoramento Proxmox via Gotify
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/root/gotify_Monitor_Proxmox/gotify.sh
+User=root
+```
+
+> Ajuste o caminho se necessário.
+
+---
+
+## 2️⃣ Criar timer
+
+```bash
+nano /etc/systemd/system/gotify-monitor.timer
+```
+
+Executando diariamente às 08:00:
+
+```ini
+[Unit]
+Description=Executa o monitor Gotify uma vez ao dia
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+AccuracySec=1min
+Unit=gotify-monitor.service
+
+[Install]
+WantedBy=timers.target
+```
+
+---
+
+## 3️⃣ Ativar
+
+```bash
+systemctl daemon-reload
+systemctl enable gotify-monitor.timer
+systemctl start gotify-monitor.timer
+```
+
+---
+
+## 🔎 Verificar
+
+```bash
+systemctl list-timers | grep gotify
+```
+
+---
+
+## 🧪 Testar manualmente
+
+```bash
+systemctl start gotify-monitor.service
+journalctl -u gotify-monitor.service -n 50 --no-pager
+```
+
+---
+
+# 🔄 Atualizar no Servidor
+
+Se o projeto foi clonado via Git:
+
+```bash
+git fetch origin
+git reset --hard origin/main
+```
+
+---
+
+# 🔐 Segurança
+
+* Credenciais ficam no `gotify.env`
+* Permissão recomendada: `chmod 600`
+* Token não fica no script
+* Compatível com execução via systemd
+
+---
+
+## 📜 Licença
+
+Este projeto está licenciado sob a licença MIT.  
+Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas!
+
+Se você quiser contribuir:
+
+1. Faça um fork do repositório
+2. Crie uma branch para sua modificação:
